@@ -1,0 +1,153 @@
+function [parc_sc,sc,idx] = scToParc(parc,k,sc,addDendo,horizCut)
+
+    %% Add Needed Paths %%
+    sbci_dat = genpath('/pine/scr/a/a/aallen1/SBCI_Data');
+    spect_kmean_dat = genpath('/pine/scr/a/a/aallen1/KMeansSpec'); 
+    prune_dat = genpath('/pine/scr/a/a/aallen1/TreePrune');
+    id_dat = genpath('/pine/scr/a/a/aallen1/PredictTraits/RScripts/data');
+    misc_data = genpath('/pine/scr/a/a/aallen1/MiscData');
+    pca_data = genpath('/pine/scr/a/a/aallen1/PCA');
+    
+    addpath(sbci_dat)
+    addpath(prune_dat)
+    addpath(id_dat)
+    addpath(spect_kmean_dat)
+    addpath(misc_data)
+    addpath(pca_data)
+
+    load('sbci_mapping.mat');
+    load('corpus_mask.mat'); 
+
+    %% Load Internal Parcellation Data %% 
+    if parc == "scdist"
+        load('scdist_prune_struct.mat')
+    elseif (parc == "avgsc") 
+        load('avgsc_prune_struct.mat')
+    elseif parc == "thresh50"    
+        load('thresh50_prune_struct.mat')
+    elseif parc == "thresh75"
+        load('thresh75_prune_struct.mat')
+    elseif parc == "thresh80"
+        load('thresh80_prune_struct.mat')
+    elseif parc == "thresh95"
+        load('thresh95_prune_struct.mat')
+    elseif parc == "threshthresh50"    
+        load('corrcorr_50_prune_struct.mat')
+    elseif parc == "threshthresh75"
+        load('corrcorr_75_prune_struct.mat')
+    elseif parc == "threshthresh80"
+        load('corrcorr_80_prune_struct.mat')
+    elseif parc == "threshthresh95"
+        load('corrcorr_95_prune_struct.mat')
+    elseif parc == "scdistgeo91"
+        load('scdistgeo91_prune_struct.mat')
+    elseif parc == "scdistward" 
+        load('scdist_ward_prune_struct.mat')
+    end
+
+    %% Get InParcellation %%
+    if parc == "kmeans_avgsc"
+        load('kmeans_avgsc_'+string(k)+'.mat')
+    elseif parc == "kmeans_avgdist"
+        load('kmeans_avgsc_'+string(k)+'.mat')
+    elseif parc == "kmeans_avgthresh50"
+        load('kmeans_avgthresh50_'+string(k)+'.mat')
+    elseif parc == "kmeans_avgthresh75"
+        load('kmeans_avgthresh75_'+string(k)+'.mat')
+    elseif parc == "kmeans_avgthresh80"
+        load('kmeans_avgthresh80_'+string(k)+'.mat')
+    elseif parc == "kmeans_avgthresh95"
+        load('kmeans_avgthresh95_'+string(k)+'.mat')
+    elseif parc == "kmeans_avgcor50"
+        load('kmeans_avgcor50_'+string(k)+'.mat')
+    elseif parc == "kmeans_avgcor75"
+        load('kmeans_avgcor75_'+string(k)+'.mat')
+    elseif parc == "kmeans_avgcor80"
+        load('kmeans_avgcor80_'+string(k)+'.mat')
+    elseif parc == "kmeans_avgcor95"
+        load('kmeans_avgcor95_'+string(k)+'.mat')
+    elseif parc == "spect_avgsc"
+        load('spect_avgsc_'+string(k)+'.mat')
+    elseif parc == "spect_avgdist"
+        load('spect_avgdist_'+string(k)+'.mat')
+    elseif parc == "spect_avgthresh_gaus50"
+        load('spect_avgthresh_gaus50_'+string(k)+'.mat')
+    elseif parc == "spect_avgthresh_gaus75"
+        load('spect_avgthresh_gaus75_'+string(k)+'.mat')
+    elseif parc == "spect_avgthresh_gaus80"
+        load('spect_avgthresh_gaus80_'+string(k)+'.mat')
+    elseif parc == "spect_avgthresh_gaus95"
+        load('spect_avgthresh_gaus95_'+string(k)+'.mat')
+    elseif parc == "spect_avgcor_gaus50"
+        load('spect_avgcor_gaus50_'+string(k)+'.mat')
+    elseif parc == "spect_avgcor_gaus75"
+        load('spect_avgcor_gaus75_'+string(k)+'.mat')
+    elseif parc == "spect_avgcor_gaus80"
+        load('spect_avgcor_gaus80_'+string(k)+'.mat')
+    elseif parc == "spect_avgcor_gaus95"
+        load('spect_avgcor_gaus95_'+string(k)+'.mat')
+    elseif parc ~= "full" && parc ~= "desk" && parc ~= "bn" && parc ~= "hcp" &&  parc ~= "yeo_17" && parc ~= "yeo_7"
+        if horizCut
+            idx = cluster(prune_struct.link,'maxclust',k);
+        else
+            [idx,~,term_nodes] = fast_term_to_clusters(prune_struct.treeSeq,prune_struct.node_mat,find(prune_struct.lengthSeq <= k,1),prune_struct.link);
+            my_parc.labels = idx;
+            [~,I] = sort(idx);
+            my_parc.sorted_idx = I;
+
+            % Remove CC (Coded as 4 in pruned trees) 
+            parc_sc = parcellate_sc(sc,my_parc,sbci_mapping,'roi_mask',[4]); 
+
+        end
+    end
+    
+    %% Handle Full and Outside Parcellations %%
+    if parc == "full" 
+        parc_sc = sc; 
+        my_parc.labels = 1:4121; 
+        my_parc.sorted_idx = 1:4121; 
+        sc(corpus_mask,:) = []; 
+        sc(:,corpus_mask) = []; 
+    elseif parc == "desk"
+    load('desikan_parc.mat');
+         my_parc = desikan_parc; 
+         my_parc.labels = my_parc.labels.';
+         % Remove CC (Coded as 1 and 36 in Desikan) 
+         parc_sc = parcellate_sc(sc,my_parc,sbci_mapping,'roi_mask',[1 36]); 
+    elseif parc == "bn"
+        load('bn_parc.mat');
+        my_parc = bn; 
+        my_parc.labels = my_parc.labels.';
+        % Remove CC (Coded as 1 and 107 in BN) 
+        parc_sc = parcellate_sc(sc,my_parc,sbci_mapping,'roi_mask',[1 107]); 
+    elseif parc == "hcp"
+        load('hcpmmp1_parc.mat');
+        my_parc = hcpmmp1;
+        my_parc.labels = my_parc.labels.';
+        % Remove CC (Coded as 1 and 182 in HCP) 
+        parc_sc = parcellate_sc(sc,my_parc,sbci_mapping,'roi_mask',[1 182]); 
+    elseif parc == "yeo_17"
+        load('yeo_17_parc.mat');
+        my_parc = yeo_17_parc;
+        my_parc.labels = my_parc.labels.';
+        % Remove CC (Coded as 1 and 19 in YEO_17) 
+        parc_sc = parcellate_sc(sc,my_parc,sbci_mapping,'roi_mask',[1 19]); 
+    elseif parc == "yeo_7"
+        load('yeo_7_parc.mat');
+        my_parc = yeo_7_parc;
+        my_parc.labels = my_parc.labels.';
+    end 
+
+    %% Add Dendrogram Info To Parcellated Matrix %%
+    if addDendo == 1
+        sc_nocorp = sc; 
+        if size(sc,1) == 4121
+            sc_nocorp(corpus_mask,:) = []; 
+            sc_nocorp(:,corpus_mask) = []; 
+        end
+        parc_sc = addDendoToParc(sc_nocorp,parc_sc,prune_struct,term_nodes);
+    end 
+
+    idx = my_parc.labels; 
+
+end

@@ -1,0 +1,102 @@
+function result = CreateSimMatrix(parc,k)
+
+%% Add Needed Paths %%
+sbci_dat = genpath('/pine/scr/a/a/aallen1/SBCI_Data');
+prune_dat = genpath('/pine/scr/a/a/aallen1/TreePrune');
+id_dat = genpath('/pine/scr/a/a/aallen1/PredictTraits/RScripts/data');
+misc_data = genpath('/pine/scr/a/a/aallen1/MiscData');
+addpath(sbci_dat)
+addpath(prune_dat)
+addpath(id_dat)
+addpath(misc_data)
+
+%% Initial Values
+num_subs = 0; 
+sub_count = 1; 
+all_ids = []; 
+all_scs_ten = []; 
+
+%% Load Needed Stuff
+%% Create Matrix Containing All SC Matrices 
+tic
+for i = 1:10
+
+    % Load SC Tensor
+    load('sbci_sc_tensor_'+string(i)+'.mat')
+    load('sc_ids_'+string(i)+'.mat')
+
+    all_ids = [all_ids; sc_ids.'];
+    subs = size(sbci_sc_tensor,3);
+    num_subs = num_subs + subs; 
+
+    % Loop through subjects 
+    for j = 1:subs
+    
+        tmp_sc = sbci_sc_tensor(:,:,j);
+
+        % Remove CC 
+
+        tmp_sc = scToParc(parc,k,tmp_sc,1); % Note scToParc currently removes CC before adding dendo info
+
+        all_scs_ten(:,:,sub_count) = tmp_sc;  
+        sub_count = sub_cou
+
+    end
+
+    clear sbci_sc_tensor;
+end
+
+size_parc = size(tmp_sc,1); 
+clear tmp_sc; 
+
+% Loop through rescan subjects
+load('scan_2_SC.mat')
+num_subs = num_subs + size(Y_scan_2,3); 
+all_ids = [all_ids; full_id_set.']; 
+for j = 1:size(Y_scan_2,3)
+    tmp_sc = Y_scan_2(:,:,j); 
+    tmp_sc = scToParc(parc,k,tmp_sc,1); 
+    all_scs_ten(:,:,j) =  tmp_sc; 
+end
+clear Y_scan_2; 
+clear tmp_sc; 
+
+"Finished Creating All_SCS"
+toc
+
+lookup = 1:size_parc:size_parc*num_subs;
+num_subs
+size_parc
+sim_mat = zeros(num_subs,num_subs); 
+
+%% Create Sim test-test Matrix
+% Find subjects corresponding SC matrix in "all_scs" and compute similarity
+tic
+for i = 1:num_subs
+    tmp_sc_1 = all_scs(:,lookup(i):lookup(i)+(size_parc-1));
+    % DENDO MATRIX RETURNED IS SYMMETRIC
+    %tmp_sc_1 = tmp_sc_1 + tmp_sc_1.' - 2*diag(diag(tmp_sc_1)); 
+
+    for j = 1:i
+        
+        tmp_sc_2 = all_scs(:,lookup(j):lookup(j)+(size_parc-1)); 
+        %tmp_sc_2 = tmp_sc_2 + tmp_sc_2.' - 2*diag(diag(tmp_sc_2)); 
+
+        sim_mat(i,j) = mean(diag(corr(tmp_sc_1,tmp_sc_2))); 
+
+    end
+end
+toc
+"Sim Matrix Created" 
+clear all_scs; 
+save('results/dendo_'+parc+'_'+string(k)+'_SIM_MAT.mat',"sim_mat","all_ids","-v7.3")
+clear sim_mat; 
+
+
+"FINISHED" + parc + "SIM MATRIX"
+result = 1; 
+
+
+clear all; 
+
+end
